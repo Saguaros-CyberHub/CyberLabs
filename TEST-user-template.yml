@@ -1,0 +1,97 @@
+# WIP - DO NOT USE
+---
+- name: Configure CyberLabs Debian 12 VM
+  hosts: all
+  become: yes
+
+  vars:
+    new_user: username
+    user_password: "$6$abcd1234$hashedoutputgoeshere..."
+
+  tasks:
+    - name: Update and upgrade all packages
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Create user
+      user:
+        name: "{{ new_user }}"
+        password: "{{ user_password }}"
+        shell: /bin/bash
+        groups: sudo
+        append: yes
+        create_home: yes
+
+    - name: Set authorized key for user (optional)
+      authorized_key:
+        user: "{{ new_user }}"
+        state: present
+        key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+      when: lookup('file', '~/.ssh/id_rsa.pub', errors='ignore') is not none
+
+    - name: Install required packages
+      apt:
+        name:
+          - cockpit
+          - cockpit-machines
+          - cockpit-podman
+          - cockpit-networkmanager
+          - cockpit-firewall
+          - cockpit-storaged
+          - cockpit-software-updates
+          - cockpit-dashboard
+          - cockpit-system
+          - cockpit-logs
+          - openssh-server
+          - wazuh-agent
+          - fail2ban
+          - podman
+          - libreoffice
+          - code
+          - libvirt-daemon-system
+          - libvirt-clients
+          - qemu-kvm
+          - net-tools
+          - curl
+          - wget
+          - git
+          - vim
+          - nano
+          - ufw
+          - build-essential
+          - gnome-tweaks
+          - gnome-shell-extensions
+        state: present
+        update_cache: yes
+
+    - name: Enable and start Cockpit
+      systemd:
+        name: cockpit
+        enabled: yes
+        state: started
+
+    - name: Enable UFW and allow common services
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+      loop:
+        - 22      # SSH
+        - 9090    # Cockpit
+
+    - name: Enable UFW
+      ufw:
+        state: enabled
+        policy: allow
+
+    - name: Enable and start Fail2Ban
+      systemd:
+        name: fail2ban
+        enabled: yes
+        state: started
+
+    - name: Enable libvirtd
+      systemd:
+        name: libvirtd
+        enabled: yes
+        state: started
